@@ -1,149 +1,97 @@
-# Lakehouse — Arquitetura Medalhão
+# Arquitetura Medalhão
 
-Pipeline de dados implementando a **Arquitetura Medalhão** no Databricks Serverless, com ingestão a partir do Supabase (PostgreSQL).
+Pipeline de dados com **Databricks + Supabase** seguindo a Arquitetura Medalhão (Bronze → Silver → Gold).
 
 ![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python)
 ![Databricks](https://img.shields.io/badge/Databricks-Serverless-red?logo=databricks)
 ![Delta Lake](https://img.shields.io/badge/Delta_Lake-3.0-blue)
 ![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ecf8e?logo=supabase)
 
+📄 **Para detalhes sobre a arquitetura, modelo dimensional e cada notebook, acesse a documentação completa:** [minattinho.github.io/entrega3_databricks](https://minattinho.github.io/entrega3_databricks/)
+
 ---
 
-## Fluxo do Pipeline
+## Pré-requisitos
 
-```
-Supabase (PostgreSQL)
-         │
-         ▼
-  000 - Extração          pg8000 · Session Pooler IPv4
-         │
-         ▼
-  001 - Ambiente          Cria schemas e volumes no Unity Catalog
-         │
-         ▼
-  002 - Bronze            CSV → Delta Lake + metadados
-         │
-         ▼
-  003 - Silver            Padronização de colunas + Data Quality
-         │
-         ▼
-  004 - Gold              Modelo Dimensional (Star Schema)
+- Workspace Databricks com Unity Catalog habilitado
+- Projeto no Supabase com as tabelas do domínio
+- Git instalado localmente
+
+---
+
+## Configuração do Ambiente
+
+### 1. Clone o repositório
+
+```bash
+git clone https://github.com/minattinho/entrega3_databricks.git
+cd entrega3_databricks
 ```
 
----
+### 2. Importe os notebooks no Databricks
 
-## Notebooks
-
-| # | Notebook | Responsabilidade |
-|---|---|---|
-| 000 | Extração | Conecta ao Supabase via `pg8000`, extrai 11 tabelas e salva como CSV no Volume |
-| 001 | Ambiente | Cria schemas `landing`, `bronze`, `silver`, `gold` e volume `dados` no Unity Catalog |
-| 002 | Bronze | Lê CSVs, adiciona metadados (`data_hora_bronze`, `nome_arquivo`) e persiste em Delta |
-| 003 | Silver | Padroniza nomes de colunas e aplica regras de Data Quality |
-| 004 | Gold | Constrói Star Schema com dimensões e fato via MERGE (SCD Tipo 1) |
-| 005 | Destroy | Remove todos os schemas e volumes (reset de ambiente) |
-
----
-
-## Modelo Dimensional — Gold
-
-| Tabela | Chave | Descrição |
-|---|---|---|
-| `dim_carro` | `SK_CARRO` | Veículo desnormalizado com marca e modelo |
-| `dim_cliente` | `SK_CLIENTE` | Dados cadastrais do segurado |
-| `dim_localidade` | `SK_LOCALIDADE` | Município + Estado + Código de Região |
-| `dim_tempo` | `FK_TEMPO` | Calendário 2023–2026 gerado via PySpark |
-| `fato_sinistro` | — | Agregação de sinistros por dimensão |
-
----
-
-## Unity Catalog
+No Databricks, vá em **Workspace → Import** e importe os arquivos `.dbc` da pasta `notebooks/` na seguinte ordem:
 
 ```
-workspace/
-├── landing/
-│   └── dados/          ← Volume com os CSVs brutos
-├── bronze/             ← Delta tables raw
-├── silver/             ← Delta tables padronizadas
-└── gold/               ← Modelo dimensional
+001 - Preparando Ambiente
+000 - Extração (Supabase)
+002 - Bronze
+003 - Silver
+004 - Gold
+005 - Destruindo Ambiente  ← apenas para reset
 ```
 
----
+### 3. Configure o ambiente do Job
 
-## Stack
-
-| Componente | Tecnologia |
-|---|---|
-| Plataforma | Databricks Serverless (Standard v5) |
-| Armazenamento | Delta Lake — Unity Catalog Managed Tables |
-| Banco de origem | Supabase (PostgreSQL) |
-| Conector PostgreSQL | `pg8000` — pure Python, compatível com ARM64 |
-| Processamento | PySpark + Python 3.12 |
-| Orquestração | Databricks Jobs & Pipelines |
-
----
-
-## Configuração
-
-### Dependência de ambiente
-
-No **Configure Environment** do Job, adicionar:
+No Databricks, vá em **Jobs & Pipelines → Edit task → Configure Environment** e adicione a dependência:
 
 ```
 pg8000
 ```
 
-> Não usar `psycopg2` ou `psycopg2-binary`. Causam SIGABRT (exit code 134) no Serverless por conflito de extensões C com a JVM.
+> ⚠️ Não usar `psycopg2` ou `psycopg2-binary` — causam crash (SIGABRT) no Serverless.
 
-### Conexão Supabase
+### 4. Configure as credenciais do Supabase
+
+No notebook `000 - Extração`, preencha as variáveis:
 
 ```python
 DB_HOST     = "aws-1-us-west-1.pooler.supabase.com"  # Session Pooler
 DB_PORT     = 5432
 DB_NAME     = "postgres"
-DB_USER     = "postgres.<project-ref>"
-DB_PASSWORD = "<senha>"
+DB_USER     = "postgres.<seu-project-ref>"
+DB_PASSWORD = "<sua-senha>"
 VOLUME_PATH = "/Volumes/workspace/landing/dados"
 ```
 
-> Usar o **Session Pooler** (não Direct Connection). O Serverless só tem IPv4; a conexão direta usa IPv6 e causa timeout.
+> ⚠️ Use o **Session Pooler** do Supabase, não a conexão direta. O Serverless só suporta IPv4.
+>
+> Para encontrar o host do pooler: **Supabase → Project Settings → Database → Session pooler**
 
 ---
 
-## Ordem de Execução
+## Executando o Pipeline
+
+Execute os notebooks **nessa ordem** no Databricks:
 
 ```
 001 → 000 → 002 → 003 → 004
 ```
 
----
-
-## Regras de Data Quality — Silver
-
-| Prefixo original | Padronizado |
-|---|---|
-| `cd_` | `CODIGO_` |
-| `nm_` | `NOME_` |
-| `vl_` | `VALOR_` |
-| `dt_` | `DATA_` |
-| `nr_` | `NUMERO_` |
-| `ds_` | `DESCRICAO_` |
-| `_uf` | `_UNIDADE_FEDERATIVA` |
-
----
-
-## Troubleshooting
-
-| Erro | Causa | Solução |
+| Passo | Notebook | O que faz |
 |---|---|---|
-| SIGABRT exit code 134 | `psycopg2` no Serverless ARM64 | Usar `pg8000` |
-| Connection timed out | IPv6 na conexão direta do Supabase | Usar Session Pooler |
-| `DELTA_METADATA_MISMATCH` | Schema Delta desatualizado | `.option("overwriteSchema", "true")` |
-| `PATH_NOT_FOUND` | CSVs ausentes no Volume | Rodar notebook 000 antes do 002 |
-| `non-existent directory` | Diretório do Volume não inicializado | `dbutils.fs.mkdirs(VOLUME_PATH)` |
+| 1 | `001 - Ambiente` | Cria schemas e volumes no Unity Catalog |
+| 2 | `000 - Extração` | Extrai dados do Supabase e salva como CSV |
+| 3 | `002 - Bronze` | Converte CSVs em Delta Lake |
+| 4 | `003 - Silver` | Padroniza colunas e aplica Data Quality |
+| 5 | `004 - Gold` | Gera o modelo dimensional (Star Schema) |
+
+> O notebook `001` só precisa rodar **uma vez** por ambiente. Nas execuções seguintes, comece pelo `000`.
 
 ---
 
-## Documentação
+## Resetando o Ambiente
 
-Documentação completa: **[minattinho.github.io/entrega3_databricks](https://minattinho.github.io/entrega3_databricks/)**
+Para apagar todos os dados e começar do zero, execute o notebook `005 - Destruindo Ambiente`.
+
+> ⚠️ Essa operação é irreversível.
