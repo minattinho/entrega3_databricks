@@ -1,0 +1,65 @@
+site_name: Lakehouse Arquitetura Medalhão
+site_description: Pipeline de dados com Databricks + Supabase seguindo a Arquitetura Medalhão
+site_author: Gabriel
+docs_dir: docs
+
+theme:
+  name: material
+  language: pt
+  palette:
+    - scheme: slate
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-4
+        name: Modo claro
+    - scheme: default
+      primary: deep purple
+      accent: purple
+      toggle:
+        icon: material/brightness-7
+        name: Modo escuro
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  icon:
+    repo: fontawesome/brands/github
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - attr_list
+
+nav:
+  - Início: index.md
+  - Arquitetura:
+      - Visão Geral: arquitetura/visao-geral.md
+      - Modelo Dimensional: arquitetura/modelo-dimensional.md
+      - Unity Catalog: arquitetura/unity-catalog.md
+  - Notebooks:
+      - 000 - Extração: notebooks/000-extracao.md
+      - 001 - Ambiente: notebooks/001-ambiente.md
+      - 002 - Bronze: notebooks/002-bronze.md
+      - 003 - Silver: notebooks/003-silver.md
+      - 004 - Gold: notebooks/004-gold.md
+      - 005 - Destroy: notebooks/005-destroy.md
+  - Configuração:
+      - Pré-requisitos: configuracao/prerequisitos.md
+      - Conexão Supabase: configuracao/supabase.md
+      - Ambiente Databricks: configuracao/databricks.md
+  - Troubleshooting: troubleshooting.md
