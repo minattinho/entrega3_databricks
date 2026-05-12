@@ -89,9 +89,3 @@ Execute os notebooks **nessa ordem** no Databricks:
 > O notebook `001` só precisa rodar **uma vez** por ambiente. Nas execuções seguintes, comece pelo `000`.
 
 ---
-
-## Resetando o Ambiente
-
-Para apagar todos os dados e começar do zero, execute o notebook `005 - Destruindo Ambiente`.
-
-> ⚠️ Essa operação é irreversível.

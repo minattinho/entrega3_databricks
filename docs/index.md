@@ -32,8 +32,6 @@ flowchart LR
 
 1. Execute o notebook **001** para criar a infraestrutura
 2. Configure a dependência `pg8000` no ambiente do Job
-3. Execute o notebook **000** para extrair os dados do Supabase
+3. Execute o notebook **Extract_notebook** para extrair os dados do Supabase
 4. Execute **002 → 003 → 004** em sequência
-
-!!! warning "Atenção"
-    Não usar `psycopg2` no Databricks Serverless. Use sempre `pg8000`.
+5. Depois execute o **005** para apagar todos os dados e começar do zero
